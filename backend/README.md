@@ -13,6 +13,8 @@ This directory contains the backend foundation for the AD preclinical SCD screen
 - Local persistent user store for development
 - Explicit local-only/not-connected status for database and object storage
 - PostgreSQL migration for the assignment database
+- Task 3 patient, assessment, statistics, report, account, and audit APIs
+- Automated business-API integration tests
 
 ## Local run
 
@@ -45,3 +47,6 @@ For cloud-function deployment and the minimum operations checklist, see
 Task-package 1 scale data has been converted for PostgreSQL under
 `fixtures/task1-scale-configs.json` and `sql/004_seed_scale_configs.sql`.
 See `docs/task1-conversion.md` before importing it.
+
+Task 3 endpoint details and the exact task-1/task-2 integration boundary are documented in
+`docs/task3-business-api.md`.
