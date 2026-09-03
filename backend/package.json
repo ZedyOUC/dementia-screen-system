@@ -1,0 +1,21 @@
+{
+  "name": "ad-scd-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Backend foundation for the AD preclinical SCD screening project",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "db:validate": "tsx scripts/validate-schema.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

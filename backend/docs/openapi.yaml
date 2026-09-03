@@ -1,0 +1,111 @@
+openapi: 3.0.3
+info:
+  title: AD SCD Backend API
+  version: 0.1.0
+  description: Assignment-level authentication, authorization, health, and file APIs.
+servers:
+  - url: http://localhost:3000/api/v1
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: Service status
+  /auth/web/login:
+    post:
+      summary: Web username/password login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string, format: password }
+      responses:
+        "200": { description: Login succeeded }
+        "401": { description: Invalid credentials }
+  /auth/me:
+    get:
+      summary: Get current user
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Current user }
+        "401": { description: Missing or invalid token }
+  /auth/logout:
+    post:
+      summary: Revoke current token
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Logout succeeded }
+  /system/admin-check:
+    get:
+      summary: Verify administrator permission
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Authorized }
+        "403": { description: Permission denied }
+  /files:
+    get:
+      summary: List file metadata
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: relatedType
+          schema: { type: string, enum: [scale_config, assessment, patient, report] }
+        - in: query
+          name: relatedId
+          schema: { type: string }
+      responses:
+        "200": { description: File metadata list }
+    post:
+      summary: Upload a file
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [originalName, mimeType, relatedType, relatedId, contentBase64]
+              properties:
+                originalName: { type: string }
+                mimeType: { type: string }
+                relatedType: { type: string, enum: [scale_config, assessment, patient, report] }
+                relatedId: { type: string }
+                contentBase64: { type: string }
+      responses:
+        "201": { description: File created }
+        "400": { description: Invalid file or metadata }
+  /files/{fileId}:
+    get:
+      summary: Get file metadata
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: fileId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: File metadata }
+        "404": { description: File not found }
+  /files/{fileId}/download:
+    get:
+      summary: Download file bytes
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: fileId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Binary file }
+        "404": { description: File not found }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
