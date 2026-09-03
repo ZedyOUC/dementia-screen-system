@@ -5,10 +5,11 @@
   "description": "Backend foundation for the AD preclinical SCD screening project",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "start": "tsx src/server.ts",
+    "dev": "node --watch --import tsx src/server.ts",
+    "start": "node --import tsx src/server.ts",
+    "test": "node --import tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "db:validate": "tsx scripts/validate-schema.ts"
+    "db:validate": "node --import tsx scripts/validate-schema.ts"
   },
   "engines": {
     "node": ">=20"
