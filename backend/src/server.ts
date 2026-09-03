@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
-import { COLLECTIONS, SCHEMA_VERSION } from "./database/schema.js";
+import { pathToFileURL } from "node:url";
 import { getDatabaseStatus } from "./database/runtime.js";
 import {
   ALLOWED_FILE_TYPES,
@@ -22,6 +22,7 @@ import {
   revokeToken,
   type AuthUser,
 } from "./auth/auth.js";
+import { getBusinessStoreStatus, handleBusinessRoute } from "./business/routes.js";
 
 const port = Number(process.env.PORT ?? 3000);
 const apiPrefix = process.env.API_PREFIX ?? "/api/v1";
@@ -133,7 +134,7 @@ function sendAuthError(response: ServerResponse, error: unknown, requestId: stri
   );
 }
 
-async function handleRequest(request: IncomingMessage, response: ServerResponse): Promise<void> {
+export async function handleRequest(request: IncomingMessage, response: ServerResponse): Promise<void> {
   const requestId = getRequestId(request);
   const method = request.method ?? "GET";
   const url = new URL(request.url ?? "/", "http://localhost");
@@ -180,6 +181,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
           uptimeSeconds: Math.floor(process.uptime()),
           dependencies: {
             database: getDatabaseStatus(),
+            businessStore: getBusinessStoreStatus(),
             objectStorage: {
               ...fileStore.getStatus(),
             },
@@ -307,6 +309,19 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
       return;
     }
 
+    if (await handleBusinessRoute({
+      request,
+      response,
+      url,
+      method,
+      requestId,
+      apiPrefix,
+      sendJson,
+      readJsonBody,
+    })) {
+      return;
+    }
+
     sendJson(
       response,
       404,
@@ -331,17 +346,24 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
   }
 }
 
-const server = createServer(handleRequest);
-
-server.listen(port, () => {
-  console.log(`AD SCD backend listening on http://localhost:${port}`);
-  console.log(`Health endpoint: http://localhost:${port}${apiPrefix}/health`);
-});
-
-function shutdown(signal: string): void {
-  console.log(`Received ${signal}; shutting down`);
-  server.close(() => process.exit(0));
+export function createBackendServer() {
+  return createServer(handleRequest);
 }
 
-process.on("SIGINT", () => shutdown("SIGINT"));
-process.on("SIGTERM", () => shutdown("SIGTERM"));
+const isEntryPoint = process.argv[1]
+  ? import.meta.url === pathToFileURL(process.argv[1]).href
+  : false;
+
+if (isEntryPoint) {
+  const server = createBackendServer();
+  server.listen(port, () => {
+    console.log(`AD SCD backend listening on http://localhost:${port}`);
+    console.log(`Health endpoint: http://localhost:${port}${apiPrefix}/health`);
+  });
+  const shutdown = (signal: string): void => {
+    console.log(`Received ${signal}; shutting down`);
+    server.close(() => process.exit(0));
+  };
+  process.on("SIGINT", () => shutdown("SIGINT"));
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+}
