@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: AD SCD Backend API
   version: 0.1.0
-  description: Assignment-level authentication, authorization, health, and file APIs.
+  description: Authentication, storage, patient, assessment, statistics, report, and system APIs.
 servers:
   - url: http://localhost:3000/api/v1
 paths:
@@ -104,8 +104,203 @@ paths:
       responses:
         "200": { description: Binary file }
         "404": { description: File not found }
+  /scales:
+    get:
+      summary: List scale configurations
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Scale configuration summaries }
+  /scales/{scaleCode}:
+    get:
+      summary: Get a scale configuration
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: scaleCode, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Questions, options, and scoring metadata }
+        "404": { description: Scale not found }
+  /patients:
+    get:
+      summary: Search patients
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: query, name: page, schema: { type: integer, minimum: 1 } }
+        - { in: query, name: pageSize, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { in: query, name: keyword, schema: { type: string } }
+        - { in: query, name: gender, schema: { type: string, enum: [male, female, unknown] } }
+        - { in: query, name: status, schema: { type: string, enum: [active, archived] } }
+      responses:
+        "200": { description: Paginated patients }
+    post:
+      summary: Create patient
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PatientInput" }
+      responses:
+        "201": { description: Patient created }
+        "409": { description: Patient code already exists }
+  /patients/{patientId}:
+    get:
+      summary: Get patient details
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: patientId, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Patient details }
+    patch:
+      summary: Update patient
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: patientId, required: true, schema: { type: string } }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PatientInput" }
+      responses:
+        "200": { description: Patient updated }
+    delete:
+      summary: Delete patient without assessments
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: patientId, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Patient deleted }
+        "409": { description: Archive required because assessments exist }
+  /assessments:
+    get:
+      summary: Search assessment records
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: query, name: patientId, schema: { type: string } }
+        - { in: query, name: scaleCode, schema: { type: string } }
+        - { in: query, name: status, schema: { type: string } }
+        - { in: query, name: from, schema: { type: string, format: date-time } }
+        - { in: query, name: to, schema: { type: string, format: date-time } }
+      responses:
+        "200": { description: Paginated assessments }
+    post:
+      summary: Create or submit assessment
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AssessmentInput" }
+      responses:
+        "201": { description: Assessment saved and scored when supported }
+  /assessments/{assessmentId}:
+    get:
+      summary: Get assessment, answers, and patient
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: assessmentId, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Assessment details }
+        "404": { description: Assessment not found }
+  /statistics/overview:
+    get:
+      summary: Dashboard totals and abnormal ratio
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Overview statistics }
+  /statistics/score-distribution:
+    get:
+      summary: Score distribution for ECharts
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: query, name: scaleCode, schema: { type: string } }
+      responses:
+        "200": { description: Score/count points }
+  /reports/assessments/{assessmentId}.pdf:
+    get:
+      summary: Export one assessment report as PDF
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: assessmentId, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: PDF report
+          content:
+            application/pdf: {}
+  /reports/assessments.xls:
+    get:
+      summary: Export filtered assessments for Excel
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: SpreadsheetML workbook
+          content:
+            application/vnd.ms-excel: {}
+  /system/accounts:
+    get:
+      summary: List accounts
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Accounts without password hashes }
+    post:
+      summary: Create account
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Account created }
+  /system/accounts/{userId}:
+    patch:
+      summary: Update account roles, status, or display name
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: userId, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Account updated }
+  /system/password:
+    put:
+      summary: Change current password and revoke sessions
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Password changed }
+  /system/operation-logs:
+    get:
+      summary: Search operation logs
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Paginated operation logs }
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
+  schemas:
+    PatientInput:
+      type: object
+      required: [patientCode, name]
+      properties:
+        patientCode: { type: string }
+        name: { type: string }
+        gender: { type: string, nullable: true, enum: [male, female, unknown] }
+        birthDate: { type: string, nullable: true, format: date }
+        educationYears: { type: number, nullable: true, minimum: 0, maximum: 40 }
+        idNumberCiphertext: { type: string, nullable: true }
+        phoneCiphertext: { type: string, nullable: true }
+        profile: { type: object }
+        status: { type: string, enum: [active, archived] }
+    AssessmentInput:
+      type: object
+      required: [patientId, scaleCode, answers]
+      properties:
+        patientId: { type: string }
+        scaleCode: { type: string }
+        scaleVersion: { type: string }
+        status: { type: string, enum: [draft, in_progress, submitted] }
+        durationSeconds: { type: number }
+        answers:
+          type: array
+          items:
+            type: object
+            required: [itemCode]
+            properties:
+              itemCode: { type: string }
+              optionCode: { type: string, nullable: true }
+              answerStatus: { type: string, enum: [answered, unanswered, na, unknown, refused] }
+              value: { type: object }
+              observation: { type: object }
