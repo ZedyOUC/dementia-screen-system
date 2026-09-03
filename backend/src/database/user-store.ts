@@ -68,6 +68,32 @@ export class LocalUserStore {
     return this.users.find((user) => user.userId === userId);
   }
 
+  list(): StoredUser[] {
+    return this.users.map((user) => ({ ...user, roleCodes: [...user.roleCodes] }));
+  }
+
+  create(user: StoredUser): StoredUser {
+    if (user.username && this.findByUsername(user.username)) {
+      throw new Error("username already exists");
+    }
+    this.users.push(user);
+    this.persist();
+    return user;
+  }
+
+  update(
+    userId: string,
+    changes: Partial<Pick<StoredUser, "displayName" | "passwordHash" | "roleCodes" | "status">>,
+  ): StoredUser | undefined {
+    const user = this.findByUserId(userId);
+    if (!user) {
+      return undefined;
+    }
+    Object.assign(user, changes, { updatedAt: new Date().toISOString() });
+    this.persist();
+    return user;
+  }
+
   updateLastLogin(userId: string, lastLoginAt: string): void {
     const user = this.findByUserId(userId);
     if (!user) {
